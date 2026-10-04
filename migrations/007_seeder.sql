@@ -3,7 +3,7 @@
 
 -- 1. Insert 1 Admin
 INSERT INTO users (email, password, role) VALUES 
-('admin@siakad.ac.id', '$2a$10$X8/hV8/O.P7xV6aY.eL/b.ZJb4o5gLpLpLpLpLpLpLpLpLpLpLp', 'admin') -- contoh password hash 'password'
+('admin@siakad.ac.id', '$2a$12$Y/B1rE6zP/G3H7X0Z.O7n.4y6c0c.q/Z2M3D.y1w6x7X9w9U/T0K.', 'admin') -- contoh password hash 'password'
 ON CONFLICT DO NOTHING;
 
 -- 2. Insert 20 Mahasiswa
@@ -14,7 +14,7 @@ DECLARE
 BEGIN
     FOR i IN 1..20 LOOP
         INSERT INTO users (email, password, role) 
-        VALUES ('student' || i || '@siakad.ac.id', '$2a$10$X8/hV8/O.P7xV6aY.eL/b.ZJb4o5gLpLpLpLpLpLpLpLpLpLpLp', 'mahasiswa')
+        VALUES ('student' || i || '@siakad.ac.id', '$2a$12$Y/B1rE6zP/G3H7X0Z.O7n.4y6c0c.q/Z2M3D.y1w6x7X9w9U/T0K.', 'mahasiswa')
         RETURNING id INTO uid;
 
         INSERT INTO students (user_id, nim, nama, prodi, angkatan, ipk_terakhir)
@@ -31,14 +31,14 @@ END $$;
 
 -- 3. Insert 10 Mata Kuliah
 INSERT INTO courses (kode_mk, nama_mk, sks, semester, kuota) VALUES 
-('IF101', 'Algoritma dan Pemrograman', 3, 1, 40),
-('IF102', 'Struktur Data', 3, 2, 40),
-('IF103', 'Basis Data', 3, 3, 40),
-('IF104', 'Sistem Operasi', 3, 4, 40),
-('IF105', 'Jaringan Komputer', 3, 5, 40),
-('IF106', 'Pemrograman Web', 3, 4, 40),
+('IF101', 'Advanced Backend Programming', 3, 1, 40),
+('IF102', 'Machine Learning', 3, 2, 40),
+('IF103', 'Project 1', 3, 3, 40),
+('IF104', 'Islamic Studies II', 3, 4, 40),
+('IF105', 'Design Thinking', 3, 5, 40),
+('IF106', 'Quality Assurance', 3, 4, 40),
 ('IF107', 'Kecerdasan Buatan', 3, 6, 40),
 ('IF108', 'Rekayasa Perangkat Lunak', 3, 5, 40),
-('IF109', 'Kriptografi', 3, 7, 40),
-('IF110', 'Keamanan Siber', 3, 7, 40)
+('IF109', 'IT Entrepreneurship', 3, 7, 40),
+('IF110', 'Cyber Security', 3, 7, 40)
 ON CONFLICT DO NOTHING;
