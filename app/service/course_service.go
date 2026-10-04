@@ -49,20 +49,13 @@ func (s *CourseService) List(c *fiber.Ctx) error {
 		}
 	}
 
+	if c.Query("available") == "true" {
+		q.Available = true
+	}
+
 	courses, _, err := s.repo.FindAll(ctx, q)
 	if err != nil {
 		return helper.Internal(err)
-	}
-	
-	// Apply "available" filter manually if requested
-	if c.Query("available") == "true" {
-		filtered := make([]model.Course, 0)
-		for _, c := range courses {
-			if c.SisaKuota > 0 {
-				filtered = append(filtered, c)
-			}
-		}
-		courses = filtered
 	}
 
 	return helper.SuccessResponse(c, fiber.StatusOK, "Daftar mata kuliah", courses, nil)

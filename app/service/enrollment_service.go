@@ -86,11 +86,21 @@ func (s *EnrollmentService) Delete(c *fiber.Ctx) error {
 		return helper.Internal(err)
 	}
 
-	err = s.enrollments.Delete(ctx, id, student.ID)
+	// Cek eksistensi data dan kepemilikan sebelum hapus
+	en, err := s.enrollments.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return helper.ErrorResponsePayload(c, fiber.StatusNotFound, "KRS tidak ditemukan atau milik orang lain", nil)
+			return helper.ErrorResponsePayload(c, fiber.StatusNotFound, "KRS tidak ditemukan", nil)
 		}
+		return helper.Internal(err)
+	}
+
+	if en.StudentID != student.ID {
+		return helper.ErrorResponsePayload(c, fiber.StatusForbidden, "Forbidden", nil)
+	}
+
+	err = s.enrollments.Delete(ctx, id, student.ID)
+	if err != nil {
 		return helper.Internal(err)
 	}
 

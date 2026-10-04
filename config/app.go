@@ -75,12 +75,19 @@ func newErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 				slog.String("code", appErr.Code),
 				slog.Int("status", appErr.Status))
 		}
-		return c.Status(appErr.Status).JSON(model.ErrorResponse{
-			Success:   false,
-			Code:      appErr.Code,
-			Message:   appErr.Message,
-			Fields:    appErr.Fields,
-			RequestID: requestID,
+		var errs any
+		if len(appErr.Fields) > 0 {
+			errMap := make(map[string][]string)
+			for k, v := range appErr.Fields {
+				errMap[k] = append(errMap[k], v)
+			}
+			errs = errMap
+		}
+
+		return c.Status(appErr.Status).JSON(model.WebResponse{
+			Success: false,
+			Message: appErr.Message,
+			Errors:  errs,
 		})
 	}
 }

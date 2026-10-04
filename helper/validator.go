@@ -61,6 +61,10 @@ func newValidator() *validator.Validate {
 	_ = v.RegisterValidation("tahun_akademik", func(fl validator.FieldLevel) bool {
 		return tahunAkademikRegex.MatchString(fl.Field().String())
 	})
+	_ = v.RegisterValidation("ipk", func(fl validator.FieldLevel) bool {
+		val := fl.Field().Float()
+		return val >= 0.00 && val <= 4.00
+	})
 	return v
 }
 
@@ -123,6 +127,8 @@ func messageFor(fe validator.FieldError) string {
 		return "angkatan harus 4 digit dan tidak melebihi tahun berjalan"
 	case "tahun_akademik":
 		return "format tahun akademik tidak valid (contoh: 2026/2027-Ganjil)"
+	case "ipk":
+		return "IPK harus berada di antara 0.00 hingga 4.00"
 	case "oneof":
 		return "harus salah satu dari: " +
 			strings.ReplaceAll(fe.Param(), " ", ", ")

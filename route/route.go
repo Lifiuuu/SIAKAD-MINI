@@ -32,19 +32,18 @@ func Register(app *fiber.App, deps Dependencies) {
 	// 2. GET /api/v1/auth/me
 	auth.Get("/auth/me", deps.AuthService.Me)
 
-	// Admin endpoints for students
-	adminStudents := auth.Group("/students", middleware.RequireRole("admin"))
-	// 3. GET /api/v1/students
-	adminStudents.Get("/", deps.StudentService.List)
-	// 4. POST /api/v1/students
-	adminStudents.Post("/", middleware.RequireJSON, deps.StudentService.Create)
-	// 6. PUT /api/v1/students/{id}
-	adminStudents.Put("/:id", middleware.RequireJSON, deps.StudentService.Replace)
-	// 7. DELETE /api/v1/students/{id}
-	adminStudents.Delete("/:id", deps.StudentService.Delete)
-
+	// Endpoints for students
+	studentsGrp := auth.Group("/students")
+	// 3. GET /api/v1/students (Admin)
+	studentsGrp.Get("/", middleware.RequireRole("admin"), deps.StudentService.List)
+	// 4. POST /api/v1/students (Admin)
+	studentsGrp.Post("/", middleware.RequireRole("admin"), middleware.RequireJSON, deps.StudentService.Create)
+	// 6. PUT /api/v1/students/{id} (Admin)
+	studentsGrp.Put("/:id", middleware.RequireRole("admin"), middleware.RequireJSON, deps.StudentService.Replace)
+	// 7. DELETE /api/v1/students/{id} (Admin)
+	studentsGrp.Delete("/:id", middleware.RequireRole("admin"), deps.StudentService.Delete)
 	// 5. GET /api/v1/students/{id} (Admin or self)
-	auth.Get("/students/:id", deps.StudentService.Get)
+	studentsGrp.Get("/:id", deps.StudentService.Get)
 
 	// 8. GET /api/v1/courses (All roles)
 	auth.Get("/courses", deps.CourseService.List)

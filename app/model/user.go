@@ -56,9 +56,10 @@ type ListQuery struct {
 	Sort     string
 	Order    string
 	IsActive *bool
-	Prodi    string
-	Angkatan int
-	Semester int
+	Prodi     string
+	Angkatan  int
+	Semester  int
+	Available bool
 }
 
 type ErrorResponse struct {

@@ -37,6 +37,11 @@ func buildCourseFilter(q model.ListQuery) (string, []any) {
 		args = append(args, q.Semester)
 	}
 
+	if q.Available {
+		// Use c.id instead of id so it can be prefixed later if needed
+		where += " AND kuota > (SELECT COUNT(*) FROM enrollments e WHERE e.course_id = c.id)"
+	}
+
 	return where, args
 }
 
@@ -44,7 +49,7 @@ func (r *coursePostgresRepository) FindAll(ctx context.Context, q model.ListQuer
 	where, args := buildCourseFilter(q)
 
 	var total int
-	err := r.pool.QueryRow(ctx, "SELECT COUNT(*) FROM courses"+where, args...).Scan(&total)
+	err := r.pool.QueryRow(ctx, "SELECT COUNT(*) FROM courses c"+where, args...).Scan(&total)
 	if err != nil {
 		return nil, 0, fmt.Errorf("menghitung courses: %w", err)
 	}

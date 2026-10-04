@@ -12,6 +12,7 @@ import (
 
 type EnrollmentRepository interface {
 	Create(ctx context.Context, student model.Student, course model.Course, tahunAkademik string) (model.Enrollment, error)
+	FindByID(ctx context.Context, id int) (model.Enrollment, error)
 	Delete(ctx context.Context, id int, studentID int) error
 	GetTotalSKS(ctx context.Context, studentID int, tahunAkademik string) (int, error)
 	GetEnrolledCourses(ctx context.Context, studentID int, tahunAkademik string) ([]model.Course, error)
@@ -97,6 +98,21 @@ func (r *enrollmentPostgresRepository) Create(ctx context.Context, student model
 
 	if err := tx.Commit(ctx); err != nil {
 		return model.Enrollment{}, fmt.Errorf("commit transaksi: %w", err)
+	}
+	return en, nil
+}
+
+func (r *enrollmentPostgresRepository) FindByID(ctx context.Context, id int) (model.Enrollment, error) {
+	var en model.Enrollment
+	err := r.pool.QueryRow(ctx,
+		"SELECT id, student_id, course_id, tahun_akademik, created_at FROM enrollments WHERE id = $1", id,
+	).Scan(&en.ID, &en.StudentID, &en.CourseID, &en.TahunAkademik, &en.CreatedAt)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Enrollment{}, ErrNotFound
+		}
+		return model.Enrollment{}, fmt.Errorf("find enrollment by id: %w", err)
 	}
 	return en, nil
 }

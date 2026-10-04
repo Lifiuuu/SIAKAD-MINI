@@ -39,6 +39,10 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
     }
   }
   ```
+- **Response Error:**
+  - `401 Unauthorized`: Jika kredensial (email/password) salah.
+  - `422 Unprocessable Entity`: Jika format validasi gagal.
+  - `429 Too Many Requests`: Jika gagal login lebih dari 5 kali per menit (rate limiting).
 
 ### 1.2. Profil (Me)
 - **Endpoint:** `GET /auth/me`
@@ -64,6 +68,8 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
     }
   }
   ```
+- **Response Error:**
+  - `401 Unauthorized`: Jika token tidak ada, salah, atau kedaluwarsa.
 
 ---
 
@@ -103,6 +109,9 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
     }
   }
   ```
+- **Response Error:**
+  - `401 Unauthorized`: Jika tidak memberikan token yang valid.
+  - `403 Forbidden`: Jika diakses oleh selain Admin.
 
 ### 2.2. Tambah Mahasiswa Baru
 - **Endpoint:** `POST /students`
@@ -119,7 +128,11 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
     "ipk_terakhir": 3.80
   }
   ```
+- **Proses:** Membuat record `users` (role mahasiswa, password awal = nim) dan `students` dalam satu *database transaction*.
 - **Response Sukses (201 Created):** Mengembalikan data mahasiswa yang baru dibuat.
+- **Response Error:**
+  - `403 Forbidden`: Jika bukan admin.
+  - `422 Unprocessable Entity`: Jika nim/email duplikat atau validasi payload gagal.
 
 ### 2.3. Detail Mahasiswa
 - **Endpoint:** `GET /students/{id}`
@@ -139,18 +152,25 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
       "ipk_terakhir": 3.45,
       "total_sks": 6,
       "batas_sks": 24,
-      "enrollments": [
+      "courses": [
         {
-          "enrollment_id": 1,
+          "id": 1,
           "kode_mk": "IF101",
           "nama_mk": "Advanced Backend Programming",
           "sks": 3,
-          "tahun_akademik": "2026/2027-Ganjil"
+          "semester": 1,
+          "kuota": 40,
+          "terisi": 15,
+          "sisa_kuota": 25,
+          "created_at": "2026-10-05T00:00:00Z"
         }
       ]
     }
   }
   ```
+- **Response Error:**
+  - `403 Forbidden`: Jika mahasiswa mencoba mengakses data mahasiswa lain.
+  - `404 Not Found`: Jika data tidak ditemukan atau sudah dihapus (*soft delete*).
 
 ### 2.4. Update Mahasiswa
 - **Endpoint:** `PUT /students/{id}`
@@ -166,12 +186,19 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
   }
   ```
 - **Response Sukses (200 OK):** Mengembalikan data terbaru.
+- **Response Error:**
+  - `403 Forbidden`: Jika bukan admin.
+  - `404 Not Found`: Jika ID tidak ditemukan.
+  - `422 Unprocessable Entity`: Jika payload validasi gagal.
 
 ### 2.5. Hapus Mahasiswa (Soft Delete)
 - **Endpoint:** `DELETE /students/{id}`
 - **Akses:** Admin
-- **Fungsi:** Menghapus data mahasiswa secara *Soft Delete* (mengisi kolom `deleted_at`).
+- **Fungsi:** Menghapus data mahasiswa secara *Soft Delete* (mengisi kolom `deleted_at`). Mahasiswa yang dihapus tidak akan muncul di daftar mahasiswa dan tidak dapat login.
 - **Response Sukses (204 No Content):** (Kosong).
+- **Response Error:**
+  - `403 Forbidden`: Jika bukan admin.
+  - `404 Not Found`: Jika ID tidak ditemukan.
 
 ---
 
@@ -204,6 +231,8 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
     ]
   }
   ```
+- **Response Error:**
+  - `401 Unauthorized`: Jika tidak ada token.
 
 ---
 
@@ -227,14 +256,19 @@ RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasis
     "message": "Berhasil mengambil mata kuliah"
   }
   ```
-- **Response Error (422 Unprocessable Entity):**
-  Jika sisa SKS tidak mencukupi, sistem akan mengembalikan error berisi sisa SKS yang diizinkan.
+- **Response Error:**
+  - `409 Conflict`: Jika mata kuliah sudah pernah diambil.
+  - `422 Unprocessable Entity`: Jika kuota penuh atau total SKS melebihi batas.
+  - `403 Forbidden`: Jika yang mengakses bukan mahasiswa.
 
 ### 4.2. Batalkan Mata Kuliah
 - **Endpoint:** `DELETE /enrollments/{id}`
 - **Akses:** Mahasiswa (Hanya KRS miliknya sendiri)
 - **Fungsi:** Membatalkan pengisian KRS. Kuota mata kuliah akan kembali bertambah.
 - **Response Sukses (204 No Content):** (Kosong).
+- **Response Error:**
+  - `403 Forbidden`: Jika mencoba menghapus KRS milik mahasiswa lain.
+  - `404 Not Found`: Jika ID KRS tidak ditemukan.
 
 ---
 
