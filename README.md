@@ -1,175 +1,252 @@
-# SIAKAD Mini — Backend API
+# Dokumentasi API - SIAKAD Mini
 
-Backend REST API sederhana untuk Sistem Informasi Akademik (SIAKAD), dibangun dengan Go + Fiber.
+RESTful API backend untuk layanan akademik sederhana yang mengelola data mahasiswa, mata kuliah, dan Kartu Rencana Studi (KRS).
 
-## Tech Stack
+- **Base URL:** `http://localhost:3000/api/v1`
+- **Format Data:** JSON
+- **Autentikasi:** Bearer Token (JWT). Semua endpoint **kecuali Login** mewajibkan header: 
+  `Authorization: Bearer <token_anda>`
 
-- **Framework**: [Fiber v2](https://gofiber.io/)
-- **Database**: PostgreSQL (via [pgx/v5](https://github.com/jackc/pgx))
-- **Auth**: JWT (Access Token + Refresh Token)
-- **Validation**: [go-playground/validator](https://github.com/go-playground/validator)
-- **Hashing**: bcrypt
-- **Logger**: `log/slog` + lumberjack
+---
 
-## Struktur Direktori
+## 1. Autentikasi
 
-```
-SIAKAD_MINI/
-├── app/
-│   ├── model/          # Struct entitas & request/response
-│   ├── repository/     # Interface + implementasi query SQL
-│   └── service/        # Business logic + handler (menerima *fiber.Ctx)
-├── config/             # App config, env, logger
-├── database/           # Connection pool PostgreSQL
-├── helper/             # JWT, bcrypt, validator, cursor, response, dll.
-├── middleware/         # Auth, authz, CORS, rate limiter
-├── migrations/         # SQL migration files
-├── route/              # Pendaftaran route
-├── main.go             # Entry point
-├── .env.example
-└── go.mod
-```
+### 1.1. Login
+- **Endpoint:** `POST /auth/login`
+- **Akses:** Publik
+- **Fungsi:** Mendapatkan access token.
+- **Request Body:**
+  ```json
+  {
+    "email": "admin@siakad.ac.id",
+    "password": "rahasia123"
+  }
+  ```
+- **Response Sukses (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Login berhasil",
+    "data": {
+      "access_token": "eyJhbGciOiJIUzI1NiIs...",
+      "token_type": "Bearer",
+      "expires_in": 900,
+      "user": {
+        "id": 1,
+        "email": "admin@siakad.ac.id",
+        "role": "admin"
+      }
+    }
+  }
+  ```
 
-## Cara Menjalankan
+### 1.2. Profil (Me)
+- **Endpoint:** `GET /auth/me`
+- **Akses:** Semua Role (Admin & Mahasiswa)
+- **Fungsi:** Mengambil data profil user yang sedang login.
+- **Response Sukses (200 OK):**
+  *(Jika Mahasiswa, response memuat tambahan data `students`)*
+  ```json
+  {
+    "success": true,
+    "message": "Data profil berhasil diambil",
+    "data": {
+      "id": 2,
+      "email": "student1@siakad.ac.id",
+      "role": "mahasiswa",
+      "student": {
+        "nim": "187221000001",
+        "nama": "Mahasiswa 1",
+        "prodi": "Informatika",
+        "angkatan": 2026,
+        "ipk_terakhir": 3.45
+      }
+    }
+  }
+  ```
 
-### 1. Persiapkan database
+---
 
-```bash
-createdb siakad_mini
+## 2. Manajemen Mahasiswa
 
-# Jalankan migration secara berurutan
-psql -U postgres -d siakad_mini -f migrations/001_create_users.sql
-psql -U postgres -d siakad_mini -f migrations/002_create_mahasiswa.sql
-psql -U postgres -d siakad_mini -f migrations/003_create_mata_kuliah.sql
-psql -U postgres -d siakad_mini -f migrations/004_create_nilai.sql
-psql -U postgres -d siakad_mini -f migrations/005_auth.sql
-psql -U postgres -d siakad_mini -f migrations/006_rbac.sql
-```
+### 2.1. Daftar Mahasiswa
+- **Endpoint:** `GET /students`
+- **Akses:** Admin
+- **Fungsi:** Melihat daftar mahasiswa dengan *pagination* dan *filter*.
+- **Query Parameters:**
+  - `page` (opsional, default: 1)
+  - `per_page` (opsional, default: 10, max: 50)
+  - `search` (opsional, mencari NIM atau Nama)
+  - `prodi` (opsional, filter program studi)
+  - `angkatan` (opsional, filter tahun angkatan)
+  - `sort` (opsional, `nama` atau `-ipk_terakhir`)
+- **Response Sukses (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Daftar mahasiswa berhasil diambil",
+    "data": [
+      {
+        "id": 1,
+        "nim": "187221000001",
+        "nama": "Mahasiswa 1",
+        "prodi": "Informatika",
+        "angkatan": 2026,
+        "ipk_terakhir": 3.45
+      }
+    ],
+    "meta": {
+      "current_page": 1,
+      "per_page": 10,
+      "total": 20,
+      "last_page": 2
+    }
+  }
+  ```
 
-### 2. Buat file `.env`
+### 2.2. Tambah Mahasiswa Baru
+- **Endpoint:** `POST /students`
+- **Akses:** Admin
+- **Fungsi:** Mendaftarkan mahasiswa (otomatis membuatkan akun login). Password default adalah NIM.
+- **Request Body:**
+  ```json
+  {
+    "nim": "187221000099",
+    "nama": "Budi Santoso",
+    "email": "budi@siakad.ac.id",
+    "prodi": "Sistem Informasi",
+    "angkatan": 2026,
+    "ipk_terakhir": 3.80
+  }
+  ```
+- **Response Sukses (201 Created):** Mengembalikan data mahasiswa yang baru dibuat.
 
-Salin `.env.example` menjadi `.env` dan isi sesuai konfigurasi lokal:
+### 2.3. Detail Mahasiswa
+- **Endpoint:** `GET /students/{id}`
+- **Akses:** Admin & Mahasiswa (Hanya akunnya sendiri)
+- **Fungsi:** Mengambil data diri beserta rincian mata kuliah yang diambil (SKS).
+- **Response Sukses (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Detail mahasiswa berhasil diambil",
+    "data": {
+      "id": 1,
+      "nim": "187221000001",
+      "nama": "Mahasiswa 1",
+      "prodi": "Informatika",
+      "angkatan": 2026,
+      "ipk_terakhir": 3.45,
+      "total_sks": 6,
+      "batas_sks": 24,
+      "enrollments": [
+        {
+          "enrollment_id": 1,
+          "kode_mk": "IF101",
+          "nama_mk": "Advanced Backend Programming",
+          "sks": 3,
+          "tahun_akademik": "2026/2027-Ganjil"
+        }
+      ]
+    }
+  }
+  ```
 
-```bash
-cp .env.example .env
-```
+### 2.4. Update Mahasiswa
+- **Endpoint:** `PUT /students/{id}`
+- **Akses:** Admin
+- **Fungsi:** Memperbarui data mahasiswa. NIM tidak bisa diubah.
+- **Request Body:**
+  ```json
+  {
+    "nama": "Budi Santoso",
+    "prodi": "Sistem Informasi",
+    "angkatan": 2026,
+    "ipk_terakhir": 3.90
+  }
+  ```
+- **Response Sukses (200 OK):** Mengembalikan data terbaru.
 
-Isi minimal yang wajib:
-```
-DB_PASSWORD=password_postgres_anda
-JWT_SECRET=minimal_32_karakter_acak_dan_panjang
-```
+### 2.5. Hapus Mahasiswa (Soft Delete)
+- **Endpoint:** `DELETE /students/{id}`
+- **Akses:** Admin
+- **Fungsi:** Menghapus data mahasiswa secara *Soft Delete* (mengisi kolom `deleted_at`).
+- **Response Sukses (204 No Content):** (Kosong).
 
-### 3. Jalankan
+---
 
-```bash
-go run main.go
-```
+## 3. Manajemen Mata Kuliah
 
-## Endpoint API
+### 3.1. Daftar Mata Kuliah
+- **Endpoint:** `GET /courses`
+- **Akses:** Semua Role (Admin & Mahasiswa)
+- **Fungsi:** Melihat ketersediaan mata kuliah.
+- **Query Parameters:**
+  - `semester` (opsional)
+  - `search` (opsional, kode atau nama mata kuliah)
+  - `available` (opsional, `true` jika hanya ingin melihat yang kuotanya belum penuh)
+- **Response Sukses (200 OK):**
+  ```json
+  {
+    "success": true,
+    "message": "Daftar mata kuliah berhasil diambil",
+    "data": [
+      {
+        "id": 1,
+        "kode_mk": "IF101",
+        "nama_mk": "Advanced Backend Programming",
+        "sks": 3,
+        "semester": 1,
+        "kuota": 40,
+        "terisi": 15,
+        "sisa_kuota": 25
+      }
+    ]
+  }
+  ```
 
-### Autentikasi (`/api/v1/auth`)
+---
 
-| Method | Path | Keterangan |
-|--------|------|------------|
-| POST | `/auth/register` | Daftar akun baru |
-| POST | `/auth/login` | Login, mendapatkan token |
+## 4. Kartu Rencana Studi (KRS)
 
-| GET | `/auth/me` | Profil pengguna saat ini |
+### 4.1. Ambil Mata Kuliah
+- **Endpoint:** `POST /enrollments`
+- **Akses:** Mahasiswa
+- **Fungsi:** Mendaftarkan kelas. Akan memvalidasi IPK (Batas SKS) dan sisa kuota mata kuliah secara ketat.
+- **Request Body:**
+  ```json
+  {
+    "course_id": 1,
+    "tahun_akademik": "2026/2027-Ganjil"
+  }
+  ```
+- **Response Sukses (201 Created):**
+  ```json
+  {
+    "success": true,
+    "message": "Berhasil mengambil mata kuliah"
+  }
+  ```
+- **Response Error (422 Unprocessable Entity):**
+  Jika sisa SKS tidak mencukupi, sistem akan mengembalikan error berisi sisa SKS yang diizinkan.
 
-### User (`/api/v1/users`) — Butuh login
+### 4.2. Batalkan Mata Kuliah
+- **Endpoint:** `DELETE /enrollments/{id}`
+- **Akses:** Mahasiswa (Hanya KRS miliknya sendiri)
+- **Fungsi:** Membatalkan pengisian KRS. Kuota mata kuliah akan kembali bertambah.
+- **Response Sukses (204 No Content):** (Kosong).
 
-| Method | Path | Permission |
-|--------|------|------------|
-| GET | `/users/` | `user:list` |
-| POST | `/users/` | `user:update:any` |
-| GET | `/users/:id` | Own / `user:read:any` |
-| PUT | `/users/:id` | Own / `user:update:any` |
-| PATCH | `/users/:id` | Own / `user:update:any` |
-| DELETE | `/users/:id` | `user:delete` |
-| PATCH | `/users/:id/role` | `role:assign` |
+---
 
-### Mahasiswa (`/api/v1/mahasiswa`) — Butuh login
-
-| Method | Path | Permission |
-|--------|------|------------|
-| GET | `/mahasiswa/` | `mahasiswa:list` |
-| POST | `/mahasiswa/` | `mahasiswa:create` |
-| GET | `/mahasiswa/:id` | Own / `mahasiswa:read:any` |
-| PUT | `/mahasiswa/:id` | Own / `mahasiswa:update:any` |
-| PATCH | `/mahasiswa/:id` | Own / `mahasiswa:update:any` |
-| DELETE | `/mahasiswa/:id` | `mahasiswa:delete` |
-
-### Mata Kuliah (`/api/v1/mata-kuliah`) — Butuh login
-
-| Method | Path | Permission |
-|--------|------|------------|
-| GET | `/mata-kuliah/` | `matakuliah:list` |
-| POST | `/mata-kuliah/` | `matakuliah:create` |
-| GET | `/mata-kuliah/:id` | `matakuliah:list` |
-| PUT | `/mata-kuliah/:id` | `matakuliah:update:any` |
-| PATCH | `/mata-kuliah/:id` | `matakuliah:update:any` |
-| DELETE | `/mata-kuliah/:id` | `matakuliah:delete` |
-
-### Nilai (`/api/v1/nilai`) — Butuh login
-
-| Method | Path | Keterangan |
-|--------|------|------------|
-| GET | `/nilai/?nim=NIM` | Ambil semua nilai berdasarkan NIM |
-| POST | `/nilai/` | Input nilai baru |
-| GET | `/nilai/:id` | Detail nilai |
-| PUT | `/nilai/:id` | Ganti nilai (perlu `nilai:update:any`) |
-| PATCH | `/nilai/:id` | Ubah sebagian nilai (perlu `nilai:update:any`) |
-| DELETE | `/nilai/:id` | Hapus nilai (perlu `nilai:delete`) |
-
-### Health Check
-
-| Method | Path | Keterangan |
-|--------|------|------------|
-| GET | `/api/v1/health` | Cek status server & database |
-
-## RBAC — Role-Based Access Control
-
-| Role | Hak Akses |
-|------|-----------|
-| `admin` | Akses penuh ke semua resource |
-| `dosen` | Kelola mahasiswa & nilai |
-| `mahasiswa` | Hanya lihat data (mahasiswa, mata kuliah, nilai sendiri) |
-| `user` | Default saat registrasi, tidak ada permission khusus |
-
-## Format Respons
-
-Semua response menggunakan amplop standar:
-
-```json
-{
-  "success": true,
-  "message": "pesan deskriptif",
-  "data": { ... },
-  "meta": { "limit": 10, "has_more": false }
-}
-```
-
-Error response:
-
+## 🚫 Standar Error Response
+Jika terjadi kesalahan validasi atau bisnis (*Conflict/Unprocessable Entity*), sistem mengembalikan kode HTTP `422` atau `409` dengan struktur:
 ```json
 {
   "success": false,
-  "code": "VALIDATION_ERROR",
-  "message": "validasi gagal",
-  "fields": { "nim": "format NIM tidak valid" },
-  "request_id": "abc123"
+  "message": "Validasi gagal",
+  "errors": {
+    "nim": ["NIM harus 12 digit numerik"],
+    "course_id": ["Mata kuliah ini sudah Anda ambil"]
+  }
 }
 ```
-
-## Konversi Grade Nilai
-
-| Nilai | Grade |
-|-------|-------|
-| ≥ 85  | A     |
-| ≥ 75  | B+    |
-| ≥ 70  | B     |
-| ≥ 60  | C+    |
-| ≥ 55  | C     |
-| ≥ 40  | D     |
-| < 40  | E     |
