@@ -3,7 +3,7 @@
 
 -- 1. Insert 1 Admin
 INSERT INTO users (email, password, role) VALUES 
-('admin@siakad.ac.id', '$2a$12$Y/B1rE6zP/G3H7X0Z.O7n.4y6c0c.q/Z2M3D.y1w6x7X9w9U/T0K.', 'admin') -- contoh password hash 'password'
+('admin@siakad.ac.id', '$2a$12$XEm1zRYkXfziXAssxcwRxORL2yQs7q3DX/aeU29oAmmhzoZkp.jnm', 'admin') -- contoh password hash 'password'
 ON CONFLICT DO NOTHING;
 
 -- 2. Insert 20 Mahasiswa
@@ -14,7 +14,7 @@ DECLARE
 BEGIN
     FOR i IN 1..20 LOOP
         INSERT INTO users (email, password, role) 
-        VALUES ('student' || i || '@siakad.ac.id', '$2a$12$Y/B1rE6zP/G3H7X0Z.O7n.4y6c0c.q/Z2M3D.y1w6x7X9w9U/T0K.', 'mahasiswa')
+        VALUES ('student' || i || '@siakad.ac.id', '$2a$12$XEm1zRYkXfziXAssxcwRxORL2yQs7q3DX/aeU29oAmmhzoZkp.jnm', 'mahasiswa')
         RETURNING id INTO uid;
 
         INSERT INTO students (user_id, nim, nama, prodi, angkatan, ipk_terakhir)

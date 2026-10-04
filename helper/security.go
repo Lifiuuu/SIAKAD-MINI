@@ -2,7 +2,6 @@ package helper
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -42,8 +41,3 @@ func RandomToken(numBytes int) (string, error) {
 	return hex.EncodeToString(buf), nil
 }
 
-// SHA256Hex dipakai untuk menyimpan refresh token dalam bentuk hash.
-func SHA256Hex(value string) string {
-	sum := sha256.Sum256([]byte(value))
-	return hex.EncodeToString(sum[:])
-}

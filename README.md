@@ -74,8 +74,7 @@ go run main.go
 |--------|------|------------|
 | POST | `/auth/register` | Daftar akun baru |
 | POST | `/auth/login` | Login, mendapatkan token |
-| POST | `/auth/refresh` | Perbarui access token |
-| POST | `/auth/logout` | Logout |
+
 | GET | `/auth/me` | Profil pengguna saat ini |
 
 ### User (`/api/v1/users`) — Butuh login
